@@ -1,0 +1,7 @@
+{
+    "experiment": ["P06", "ID16B", "JEOL3000F"],
+    "output_path": "C:/Users/Isac Lazar/Documents/Software/chalmers_al_am/out",
+    "verbose": true,
+    "overwrite": false
+  }
+  
