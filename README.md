@@ -25,3 +25,4 @@ Data from this experiment consists of
 - EDX/EDS elemental mapping 
   - Spectral images as data cubes (.raw + .rpl)
   - Point acquisitions as individual spectra
+  - 
