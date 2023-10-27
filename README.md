@@ -25,4 +25,17 @@ Data from this experiment consists of
 - EDX/EDS elemental mapping 
   - Spectral images as data cubes (.raw + .rpl)
   - Point acquisitions as individual spectra
-  - 
+
+## Running specific scripts
+If you want to run a specific script, such as a single script for generating a figure, here are the steps.
+Make sure your current working directory is the /src directory
+```
+cd /src
+```
+```
+python -m package.module.script
+```
+Example 
+```
+python -m figure_scripts.BF_DF_SAED310_SAED594 
+```

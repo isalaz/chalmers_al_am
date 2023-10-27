@@ -1,3 +1,10 @@
+#
+# Created on Fri Oct 27 2023
+#
+# by Isac Lazar
+#
+
+  
 import matplotlib.pyplot as plt
 from figure_tools.plotting_utils import *
 from JEOL3000F_tools.loading import *
@@ -11,85 +18,87 @@ plt.rcParams['text.usetex'] = False # TeX rendering
  
 def BF_DF_SAED310_SAED594(**kwargs):
     from matplotlib.patches import Circle
-    # p = {}
+    '''
+    Function for plotting the figure. Below are the parameters that can be set. By default they are read from the
+    json config file that has the same name as the function
     # #########Define constants applying to all subplots#############################################################################
-    # p["scale_bar_fs"] = 20 # font size of scale bars
-    # p["titles_fs"] = 20 # font size of title texts
-    # p["annotation_fs"] = 7 # font size of annotation texts
-    # p["annotation_linewidths"] = 0.7 # linewidth of annotations
-    # p["letter_label_x_padding_ratio"] = 0.03 #left padding in terms of ratio of x-axis width
-    # p["letter_label_y_padding_ratio"] = 0.03 # #top padding in terms of ratio of y-axis height
-    # p["title_x_padding_ratio"] = 0.03 #right padding in terms of ratio of x-axis width
-    # p["title_y_padding_ratio"] = 0.03 # #top padding in terms of ratio of y-axis height
+    # p["scale_bar_fs"]  # font size of scale bars
+    # p["titles_fs"]  # font size of title texts
+    # p["annotation_fs"] # font size of annotation texts
+    # p["annotation_linewidths"]  # linewidth of annotations
+    # p["letter_label_x_padding_ratio"]  #left padding in terms of ratio of x-axis width
+    # p["letter_label_y_padding_ratio"]  # #top padding in terms of ratio of y-axis height
+    # p["title_x_padding_ratio"]  #right padding in terms of ratio of x-axis width
+    # p["title_y_padding_ratio"]  # #top padding in terms of ratio of y-axis height
     
-    # p["sb_position_x_A_B"], p["sb_position_y_A_B"] = 100, 100
-    # p["sb_size_width_A_B"], p["sb_size_height_A_B"] = 500, 40
-    # p["sb_unit_A_B"] = 'nm'
+    # p["sb_position_x_A_B"], p["sb_position_y_A_B"]
+    # p["sb_size_width_A_B"], p["sb_size_height_A_B"] 
+    # p["sb_unit_A_B"] 
     
-    # p["sb_position_x_C_D"], p["sb_position_y_C_D"] = 2, 2
-    # p["sb_size_width_C_D"], p["sb_size_height_C_D"] = 10, 0.6
-    # p["sb_unit_C_D"] = 'nm$^{-1}$'
+    # p["sb_position_x_C_D"], p["sb_position_y_C_D"] 
+    # p["sb_size_width_C_D"], p["sb_size_height_C_D"] 
+    # p["sb_unit_C_D"] 
     
-    # p["diff_spots_circle_radius"] = 0.4
+    # p["diff_spots_circle_radius"] 
    
     # ####################### params specific to each subplot
     # #### A 
-    # p["title_A"] = 'BF TEM'
-    # p["im_limits_min_A"], p["im_limits_max_A"] = 0, 1800
+    # p["title_A"] 
+    # p["im_limits_min_A"], p["im_limits_max_A"] 
     
-    # p["aperture_circle_radius_A"] = 95
-    # p["aperture_circle_pos_x_A"], aperture_circle_pos_y_A = 981, 520
-    # p["aperture_circle_label_A"] = 'SAED'
+    # p["aperture_circle_radius_A"]
+    # p["aperture_circle_pos_x_A"], aperture_circle_pos_y_A
+    # p["aperture_circle_label_A"] 
     
     # ####B
-    # p["title_B"] = 'BF TEM'
-    # p["im_limits_min_B"], p["im_limits_max_B"] = 0, 1800
+    # p["title_B"] 
+    # p["im_limits_min_B"], p["im_limits_max_B"]
     
     # ####C
-    # p["title_C"] = 'Al$_{45}$Cr$_7$ [310]'
-    # p["im_limits_min_C"], p["im_limits_max_C"] = -200, 1500
-    # p["pg_center_x_C"], p["pg_center_y_C"] =  14.65, 11.15
-    # p["pg_width_C"], p["pg_height_C"] = 1.15, 3.85
-    # p["pg_angle_C"] = 95
-    # p["pg_rotation_angle_C"] = 138.1
+    # p["title_C"]
+    # p["im_limits_min_C"], p["im_limits_max_C"] 
+    # p["pg_center_x_C"], p["pg_center_y_C"] 
+    # p["pg_width_C"], p["pg_height_C"] 
+    # p["pg_angle_C"]
+    # p["pg_rotation_angle_C"] 
     # # labeled spots in direction 1
-    # p["line_start_dir1_x_C"], p["line_start_dir1_y_C"] = 13.2, 15.55
-    # p["line_end_dir1_x_C"], p["line_end_dir1_y_C"] = 10.85, 18.05
-    # p["n_diff_spot_circles_dir1_C"] = 4 # number of diffraction spot circles in the first direction
-    # p["diff_spots_circle_labels_dir1_C"] = ['001', '002', '003', '004'] # labels for the diffraction spots in the first direction
+    # p["line_start_dir1_x_C"], p["line_start_dir1_y_C"] 
+    # p["line_end_dir1_x_C"], p["line_end_dir1_y_C"] 
+    # p["n_diff_spot_circles_dir1_C"] # number of diffraction spot circles in the first direction
+    # p["diff_spots_circle_labels_dir1_C"] =# labels for the diffraction spots in the first direction
     
-    # p["diff_spot_for_DF_x_C"], p["diff_spot_for_DF_y_C"] = 10.85, 18.05
+    # p["diff_spot_for_DF_x_C"], p["diff_spot_for_DF_y_C"]
     
     # # labeled spots in direction 2
-    # p["line_start_dir2_x_C"], p["line_start_dir2_y_C"] = 11.35, 11.85
-    # p["line_end_dir2_x_C"], p["line_end_dir2_y_C"] = 8.75, 8.9
-    # p["n_diff_spot_circles_dir2_C"] = 2 # number of diffraction spot circles in the second direction
-    # p["diff_spots_circle_labels_dir2_C"] = ['$\\overline{1}30$', '$\\overline{2}60$'] # labels for the diffraction spots in the second direction
+    # p["line_start_dir2_x_C"], p["line_start_dir2_y_C"] 
+    # p["line_end_dir2_x_C"], p["line_end_dir2_y_C"] 
+    # p["n_diff_spot_circles_dir2_C"] # number of diffraction spot circles in the second direction
+    # p["diff_spots_circle_labels_dir2_C"] # labels for the diffraction spots in the second direction
 
     
     # ####D
-    # p["title_D"] = 'Al$_{45}$Cr$_7$ [5$\\overline{9}$4]'
-    # p["im_limits_min_D"], p["im_limits_max_D"] = -100, 1200
-    # p["pg_center_x_D"], p["pg_center_y_D"] =  16.9, 14.03
-    # p["pg_width_D"], p["pg_height_D"] = 2.02, 3.89
-    # p["pg_angle_D"] = 75
-    # p["pg_rotation_angle_D"] = 137.8
+    # p["title_D"] 
+    # p["im_limits_min_D"], p["im_limits_max_D"] 
+    # p["pg_center_x_D"], p["pg_center_y_D"] 
+    # p["pg_width_D"], p["pg_height_D"] 
+    # p["pg_angle_D"]
+    # p["pg_rotation_angle_D"] 
     
     #  # labeled spots in direction 1
-    # p["line_start_dir1_x_D"], p["line_start_dir1_y_D"] = 11.15, 15.05
-    # p["line_end_dir1_x_D"], p["line_end_dir1_y_D"] = 7.6,17
-    # p["n_diff_spot_circles_dir1_D"] = 3 # number of diffraction spot circles in the first direction
-    # p["diff_spots_circle_labels_dir1_D"] = ['111', '222', '333'] # labels for the diffraction spots in the first direction
+    # p["line_start_dir1_x_D"], p["line_start_dir1_y_D"]
+    # p["line_end_dir1_x_D"], p["line_end_dir1_y_D"]
+    # p["n_diff_spot_circles_dir1_D"]# number of diffraction spot circles in the first direction
+    # p["diff_spots_circle_labels_dir1_D"] # labels for the diffraction spots in the first direction
     
     # # labeled spots in direction 2
-    # p["line_start_dir2_x_D"], p["line_start_dir2_y_D"] = 10.3, 11.25
-    # p["line_end_dir2_x_D"], p["line_end_dir2_y_D"] = 7.6,8.35
-    # p["n_diff_spot_circles_dir2_D"] = 2 # number of diffraction spot circles in the first direction
-    # p["diff_spots_circle_labels_dir2_D"] = ['62$\\overline{3}$', '12 4$\\overline{6}$'] # labels for the diffraction spots in the first direction
+    # p["line_start_dir2_x_D"], p["line_start_dir2_y_D"]
+    # p["line_end_dir2_x_D"], p["line_end_dir2_y_D"] 
+    # p["n_diff_spot_circles_dir2_D"]  # number of diffraction spot circles in the first direction
+    # p["diff_spots_circle_labels_dir2_D"] # labels for the diffraction spots in the first direction
     
     
     ####################################################################################
-   
+   '''
     ### Load parameter values from JSON file with same name as script
     # Opening JSON file
     try:
@@ -248,4 +257,6 @@ def BF_DF_SAED310_SAED594(**kwargs):
 
     plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594.png'), dpi=600)
     
-BF_DF_SAED310_SAED594()
+
+if __name__ == '__main__':
+    BF_DF_SAED310_SAED594()
