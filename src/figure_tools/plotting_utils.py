@@ -5,6 +5,12 @@ from matplotlib.patches import Rectangle
 import numpy as np
 import os
 import glob
+from typing import List, Callable
+from inspect import signature, Parameter
+import ipywidgets as widgets
+from ipywidgets import interactive
+from IPython.display import display
+
 
 def correct_pixel_scaling(s: hs.signals.Signal2D) -> None:
     '''If the image loaded into the signal is a diffraction pattern, change the 
@@ -12,11 +18,11 @@ def correct_pixel_scaling(s: hs.signals.Signal2D) -> None:
     DIFF_PATT_CALIB_SCALE_FACTOR = 40.25/40 #found by calibrating against pure Al lattice parameter 4.0509 Å
     #check if it is a diffraction pattern
     if s.axes_manager[0].units == '1/nm':
-        print('Correcting physical scale of axis 0 to calibration')
+        
         s.axes_manager[0].scale = s.axes_manager[0].scale*DIFF_PATT_CALIB_SCALE_FACTOR
         
     if s.axes_manager[1].units == '1/nm':
-        print('Correcting physical scale of axis 0 to calibration')
+        
         s.axes_manager[1].scale = s.axes_manager[1].scale*DIFF_PATT_CALIB_SCALE_FACTOR
 
 def load_2d_image(root_path: str, im_nr: int) -> hs.signals.Signal2D:
@@ -27,7 +33,7 @@ def load_2d_image(root_path: str, im_nr: int) -> hs.signals.Signal2D:
     files = glob.glob(os.path.join(root_path, '**/*.dm3'), recursive=True)
     frame_nr = str(im_nr).zfill(4)
     frame_fn = [s for s in files if frame_nr in s][0]
-    print(f'Loading {frame_fn}')
+    
     s = hs.load(frame_fn)
     correct_pixel_scaling(s)
     return s
@@ -52,6 +58,7 @@ def create_parallelogram(center: tuple, width: float, height: float, smallest_an
     vertices = np.matmul(rotate_matrix, np.matmul(skew_matrix, vertices.T)).T + center
     # Create a Polygon patch
     parallelogram = Polygon(vertices, closed=True, edgecolor=edgecolor, linewidth=linewidth, facecolor='none')
+    
 
     return parallelogram
 def create_scale_bar(ax, position: tuple, size: tuple, unit: str, color='white', fontsize=12):
@@ -147,3 +154,41 @@ def plot_image_with_physical_size(s: hs.signals.Signal2D, ax, square_crop=False,
     if not show_axis:
         ax.axis('off')
     
+def interactive_plotting(plot_function: Callable, args_to_interact: List[str], sranges: List[tuple]) -> None:
+    """
+    Creates an interactive plotting widget for a given plotting function.
+    Only works if run as a notebook. (Execute this script VSCODE)
+    
+    Parameters
+    ----------
+    plot_function : Callable
+        The plotting function for which to create interactive sliders.
+        
+    args_to_interact : List[str]
+        A list of argument names for which sliders should be created.
+    sranges: List[tuple]
+        A list of 3-tuples specifying the (start, end, step) of the slider
+        
+    Returns
+    -------
+    None
+        Displays the interactive widget but does not return anything.
+    """
+    
+    # Extract the arguments and default values from the plotting function
+    sig = signature(plot_function)
+    parameters = sig.parameters
+    param_values = {name: param.default if param.default != Parameter.empty else 0 for name, param in parameters.items()}
+
+    # Create sliders only for arguments specified in args_to_interact
+    sliders = {}
+    for arg, srange in zip(args_to_interact, sranges):
+        default_value = param_values.get(arg, 0)
+        sliders[arg] = widgets.FloatSlider(value=default_value, min=srange[0], max=srange[1], step=srange[2])
+
+    # Create an interactive widget
+    w = interactive(plot_function, **sliders)
+    
+    # Display the widget
+    display(w)
+   
