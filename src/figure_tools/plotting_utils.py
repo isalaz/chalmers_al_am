@@ -2,6 +2,7 @@ import hyperspy.api as hs
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.patches import Rectangle
+import matplotlib as mpl
 import numpy as np
 import os
 import glob
@@ -12,34 +13,7 @@ from ipywidgets import interactive
 from IPython.display import display
 
 
-def correct_pixel_scaling(s: hs.signals.Signal2D) -> None:
-    '''If the image loaded into the signal is a diffraction pattern, change the 
-    physical size spec of the pixels according to calibration'''
-    DIFF_PATT_CALIB_SCALE_FACTOR = 40.25/40 #found by calibrating against pure Al lattice parameter 4.0509 Å
-    #check if it is a diffraction pattern
-    if s.axes_manager[0].units == '1/nm':
-        
-        s.axes_manager[0].scale = s.axes_manager[0].scale*DIFF_PATT_CALIB_SCALE_FACTOR
-        
-    if s.axes_manager[1].units == '1/nm':
-        
-        s.axes_manager[1].scale = s.axes_manager[1].scale*DIFF_PATT_CALIB_SCALE_FACTOR
-
-def load_2d_image(root_path: str, im_nr: int) -> hs.signals.Signal2D:
-    '''Loads the microscope image with the unique image number, present somewhere in the root path
-    Args:
-        str root_path: path to look for .dm3 files
-        int im_nr: the unique image number'''
-    files = glob.glob(os.path.join(root_path, '**/*.dm3'), recursive=True)
-    frame_nr = str(im_nr).zfill(4)
-    frame_fn = [s for s in files if frame_nr in s][0]
-    
-    s = hs.load(frame_fn)
-    correct_pixel_scaling(s)
-    return s
-    
-
-def create_parallelogram(center: tuple, width: float, height: float, smallest_angle: float, rotation_angle: float, edgecolor='r', linewidth=2):
+def create_parallelogram(ax: mpl.axes._axes.Axes, center: tuple, width: float, height: float, smallest_angle: float, rotation_angle: float, edgecolor: str = 'r', linewidth: float = 2) -> None:
     # Calculate the coordinates of the four vertices of the parallelogram
     half_width = width / 2
     half_height = height / 2
@@ -60,8 +34,8 @@ def create_parallelogram(center: tuple, width: float, height: float, smallest_an
     parallelogram = Polygon(vertices, closed=True, edgecolor=edgecolor, linewidth=linewidth, facecolor='none')
     
 
-    return parallelogram
-def create_scale_bar(ax, position: tuple, size: tuple, unit: str, color='white', fontsize=12):
+    ax.add_patch(parallelogram)
+def create_scale_bar(ax: mpl.axes._axes.Axes, position: tuple, size: tuple, unit: str, color:str = 'white', fontsize: float = 12):
     from matplotlib.text import Text
     '''
     Create a scale overline and text for an image.
@@ -73,9 +47,7 @@ def create_scale_bar(ax, position: tuple, size: tuple, unit: str, color='white',
         color (str): The color of the scale bar and text (default is 'white').
         fontsize (int): The fontsize for the text (default is 12).
 
-    Returns:
-        tuple: A tuple containing a Rectangle patch representing the scale bar and
-        a tuple containing the text, its position, and fontsize.
+    
     '''
     x, y = position
     width, height =  size
@@ -90,7 +62,7 @@ def create_scale_bar(ax, position: tuple, size: tuple, unit: str, color='white',
     ax.text(x=text_x, y=text_y, s=text, fontsize=fontsize, color=color, ha='center')
 
 
-def plot_circles_along_line(ax, line_start: tuple, line_end: tuple, n_circles: int, plot_line: bool=False, labels: list = None, radius=0.4,fontsize=10, **kwargs):
+def plot_circles_along_line(ax: mpl.axes._axes.Axes, line_start: tuple, line_end: tuple, n_circles: int, plot_line: bool=False, labels: list = None, radius: float = 0.4, fontsize: float = 10, **kwargs):
     # Extract x and y coordinates of the line start and end points
     x_start, y_start = line_start
     x_end, y_end = line_end
@@ -109,8 +81,7 @@ def plot_circles_along_line(ax, line_start: tuple, line_end: tuple, n_circles: i
         x_circle = x_start + i * dx
         y_circle = y_start + i * dy
 
-        # Define the radius of the circles (you can adjust this as needed)
-        
+     
 
         # Plot the circle
         circle = plt.Circle((x_circle, y_circle), radius=radius,**kwargs)
@@ -120,44 +91,44 @@ def plot_circles_along_line(ax, line_start: tuple, line_end: tuple, n_circles: i
             ax.annotate(labels[i], (x_circle+1.4*radius, y_circle), color='w', fontsize=fontsize,
                         ha='left', va='center')
 
-def plot_image_with_physical_size(s: hs.signals.Signal2D, ax, square_crop=False, show_axis: bool=True, **kwargs):
+def plot_image_with_physical_size(ax: mpl.axes._axes.Axes, im: np.array, x_scale: float, y_scale: float, show_axis: bool=True, **kwargs):
     """
     Plot an image with specified physical size for each pixel using the extent keyword.
 
     Parameters:
-        s: Signal2D to be plotted
-        show_axis (bool): If numbers on the axes should be plotted (default true)
-
-    Returns:
-        matplotlib.axes._axes.Axes: The axis object for further modifications.
+        ax: mpl.axes._axes.Axes object to plot image on
+        im: image to be plotted
+        x_scale: size of pixels in x direction
+        y_scale: size of pixels in y direction
+        show_axis (bool): If numbers on the axes should be plotted (default True)
 
     """
-    image = s.data
-    if square_crop:
-        min_dim = np.min(image.shape)
-        max_dim_idx = np.argmax(image.shape)
-        difference = image.shape[max_dim_idx] - min_dim
-        start = int(np.round(difference/2))
-        end = int(np.round(image.shape[max_dim_idx] - difference/2))
-        if max_dim_idx ==1:
-            image = image[:,start:end]
-        else:
-            image = image[start:end, :]
-        
-    pixel_size_x = s.axes_manager['x'].scale
-    pixel_size_y = s.axes_manager['y'].scale
-    
-    height, width = image.shape[:2]
-    extent = (0, width * pixel_size_x, 0, height * pixel_size_y)
-    ax.imshow(image, extent=extent, **kwargs)
+     
+   
+    height, width = im.shape[:2]
+    extent = (0, width * x_scale, 0, height * y_scale)
+    ax.imshow(im, extent=extent, **kwargs)
     
     if not show_axis:
         ax.axis('off')
+
+def square_crop(image: np.array) -> np.array:
+    '''Crops the largest dimension of a 2D array to the smallest dimension'''
+    min_dim = np.min(image.shape)
+    max_dim_idx = np.argmax(image.shape)
+    difference = image.shape[max_dim_idx] - min_dim
+    start = int(np.round(difference/2))
+    end = int(np.round(image.shape[max_dim_idx] - difference/2))
+    if max_dim_idx ==1:
+        image = image[:,start:end]
+    else:
+        image = image[start:end, :]
+    return image
     
 def interactive_plotting(plot_function: Callable, args_to_interact: List[str], sranges: List[tuple]) -> None:
     """
     Creates an interactive plotting widget for a given plotting function.
-    Only works if run as a notebook. (Execute this script VSCODE)
+    Only works if run as a notebook. (Scripts can be executed as notebook cells in VSCode)
     
     Parameters
     ----------

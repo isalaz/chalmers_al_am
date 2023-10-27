@@ -1,65 +1,16 @@
-#
-# Created on Thu Oct 26 2023
-#
-# by Isac Lazar
-#
-#%%
-
-
-
-import hyperspy.api as hs
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
-from matplotlib.patches import Rectangle
-import numpy as np
-
-from glob import glob
 from figure_tools.plotting_utils import *
+from JEOL3000F_tools.loading import *
 
-
-import matplotlib as mpl
 font = {'family' : 'Arial','weight' : 'normal'} 
 plt.rc('font', **font)      
 
 plt.rcParams['text.usetex'] = False # TeX rendering
 
  
-# Example plotting function
-def example_plot(x_center=0, y_center=0, radius=1):
-    fig, ax = plt.subplots()
-    ax.set_aspect('equal', 'box')
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-10, 10)
-    circle = plt.Circle((x_center, y_center), radius, fill=False, color='blue')
-    ax.add_artist(circle)
-    plt.show()
-    
-    
-    
-def create_plot(plotting_function_name: str):
-    """
-    Run a plotting function given its name as a string.
-
-    Parameters:
-    - plotting_function_name (str): The name of the plotting function to run.
-
-    Example:
-    create_plot("plot_function_name")
-    """
-    try:
-        # Access the plotting function using its name
-        plotting_function = globals()[plotting_function_name]
-
-        # Run the plotting function
-        plotting_function()
-    except KeyError:
-        print(f"No function named {plotting_function_name} found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
 def BF_DF_SAED310_SAED594(**kwargs):
     from matplotlib.patches import Circle
-     
+    p = {}
     #########Define constants applying to all subplots#############################################################################
     scale_bar_fs = 20 # font size of scale bars
     titles_fs = 20 # font size of title texts
@@ -141,15 +92,21 @@ def BF_DF_SAED310_SAED594(**kwargs):
     #### Set parameter values if they are provided as arguments
     
     root_path = r"C:\Users\Isac Lazar\OneDrive - Lund University\Dokument\Projekt\Chalmers Al-AM\data\JEOL3000F\2023-10-12\raw"
-    im1 = 150
-    im2 = 160
-    im3 = 221
-    im4 = 192
+    im_nr1 = 150
+    im_nr2 = 160
+    im_nr3 = 221
+    im_nr4 = 192
     
-    s1 = load_2d_image(root_path, im1)
-    s2 = load_2d_image(root_path, im2)
-    s3 = load_2d_image(root_path, im3)
-    s4 = load_2d_image(root_path, im4)
+ 
+    im1, md1 = load_dm3_by_unique_number(root_path, im_nr1)
+    im2, md2 = load_dm3_by_unique_number(root_path, im_nr2)
+    im3, md3 = load_dm3_by_unique_number(root_path, im_nr3)
+    im4, md4 = load_dm3_by_unique_number(root_path, im_nr4)
+    
+    im3 = square_crop(im3)
+    im4 = square_crop(im4)
+  
+
 
   
     
@@ -158,7 +115,8 @@ def BF_DF_SAED310_SAED594(**kwargs):
 
     #subplot 0,0 A
     curr_ax = axs[0,0]
-    plot_image_with_physical_size(s1, ax=curr_ax,show_axis=False, cmap='gray', vmin=im_limits_min_A, vmax=im_limits_max_A)
+    plot_image_with_physical_size(ax=curr_ax, im=im1, x_scale=md1['axis-1']['scale'], y_scale=md1['axis-0']['scale'],
+                                  show_axis=False, cmap='gray', vmin=im_limits_min_A, vmax=im_limits_max_A)
     x_width = curr_ax.get_xlim()[1] -  curr_ax.get_xlim()[0] 
     y_width = curr_ax.get_ylim()[1] -  curr_ax.get_ylim()[0] 
     curr_ax.text(x=x_width*letter_label_x_padding_ratio, y=y_width*(1- letter_label_y_padding_ratio), 
@@ -182,8 +140,8 @@ def BF_DF_SAED310_SAED594(**kwargs):
 
     #subplot 0,1 B
     curr_ax = axs[0,1]
-    plot_image_with_physical_size(s2, ax=curr_ax,show_axis=False, cmap='gray', 
-                                  vmin=im_limits_min_B, vmax=im_limits_max_B)
+    plot_image_with_physical_size(ax=curr_ax, im=im2, x_scale=md2['axis-1']['scale'], y_scale=md2['axis-0']['scale'],
+                                  show_axis=False, cmap='gray', vmin=im_limits_min_B, vmax=im_limits_max_B)
     x_width = curr_ax.get_xlim()[1] -  curr_ax.get_xlim()[0]
     y_width = curr_ax.get_ylim()[1] -  curr_ax.get_ylim()[0] 
     curr_ax.text(x=x_width*letter_label_x_padding_ratio, y=y_width*(1- letter_label_y_padding_ratio), 
@@ -200,7 +158,8 @@ def BF_DF_SAED310_SAED594(**kwargs):
     #subplot 1,0 C
 
     curr_ax = axs[1,0]
-    plot_image_with_physical_size(s3, curr_ax, square_crop=True, show_axis=False, vmin=im_limits_min_C, vmax=im_limits_max_C, cmap='gray')
+    plot_image_with_physical_size(ax=curr_ax, im=im3, x_scale=md3['axis-1']['scale'], y_scale=md3['axis-0']['scale'],
+                                  show_axis=False, cmap='gray', vmin=im_limits_min_C, vmax=im_limits_max_C)
     x_width = curr_ax.get_xlim()[1] -  curr_ax.get_xlim()[0]
     y_width = curr_ax.get_ylim()[1] -  curr_ax.get_ylim()[0]
     curr_ax.text(x=x_width*letter_label_x_padding_ratio, y=y_width*(1- letter_label_y_padding_ratio), 
@@ -216,10 +175,10 @@ def BF_DF_SAED310_SAED594(**kwargs):
     create_scale_bar(curr_ax, position=(sb_position_x_C_D, sb_position_y_C_D), size=(sb_size_width_C_D, sb_size_height_C_D), 
                      unit=sb_unit_C_D, fontsize=scale_bar_fs)
     # create parallelogram indicating reciprocal unit cell
-    pg = create_parallelogram(center=(pg_center_x_C, pg_center_y_C), width=pg_width_C, height=pg_height_C, 
+    create_parallelogram(ax=curr_ax, center=(pg_center_x_C, pg_center_y_C), width=pg_width_C, height=pg_height_C, 
                               smallest_angle=pg_angle_C, rotation_angle=pg_rotation_angle_C, edgecolor='white', linewidth=annotation_linewidths)
 
-    curr_ax.add_patch(pg)
+    
     # index a few diffraction spots along one direction
     plot_circles_along_line(curr_ax, line_start=(line_start_dir1_x_C, line_start_dir1_y_C), line_end=(line_end_dir1_x_C, line_end_dir1_y_C), 
                             n_circles=n_diff_spot_circles_dir1_C, labels=diff_spots_circle_labels_dir1_C, radius=diff_spots_circle_radius, 
@@ -241,8 +200,8 @@ def BF_DF_SAED310_SAED594(**kwargs):
 
     ## subplot 1,1 D
     curr_ax = axs[1,1]
-    plot_image_with_physical_size(s4, curr_ax, square_crop=True, show_axis=False, vmin=im_limits_min_D, vmax=im_limits_max_D, cmap='gray')
-
+    plot_image_with_physical_size(ax=curr_ax, im=im4, x_scale=md4['axis-1']['scale'], y_scale=md4['axis-0']['scale'],
+                                  show_axis=False, cmap='gray', vmin=im_limits_min_D, vmax=im_limits_max_D)
     x_width = curr_ax.get_xlim()[1] -  curr_ax.get_xlim()[0]
     y_width = curr_ax.get_ylim()[1] -  curr_ax.get_ylim()[0]
     curr_ax.text(x=x_width*letter_label_x_padding_ratio, y=y_width*(1- letter_label_y_padding_ratio), 
@@ -256,10 +215,10 @@ def BF_DF_SAED310_SAED594(**kwargs):
     create_scale_bar(curr_ax, position=(sb_position_x_C_D, sb_position_y_C_D), size=(sb_size_width_C_D, sb_size_height_C_D), 
                      unit=sb_unit_C_D, fontsize=scale_bar_fs)
 
-    pg = create_parallelogram(center=(pg_center_x_D, pg_center_y_D), width=pg_width_D, height=pg_height_D, smallest_angle=pg_angle_D, 
+    create_parallelogram(ax=curr_ax,center=(pg_center_x_D, pg_center_y_D), width=pg_width_D, height=pg_height_D, smallest_angle=pg_angle_D, 
                             rotation_angle=pg_rotation_angle_D, edgecolor='white', linewidth=annotation_linewidths)
 
-    curr_ax.add_patch(pg)
+    
    
     plot_circles_along_line(curr_ax, line_start=(line_start_dir1_x_D, line_start_dir1_y_D), line_end=(line_end_dir1_x_D, line_end_dir1_y_D),
                             n_circles=n_diff_spot_circles_dir1_D, 
@@ -275,22 +234,8 @@ def BF_DF_SAED310_SAED594(**kwargs):
    
 
     fig.tight_layout()
-    # Get the full path of the script
-    script_path = os.path.abspath(__file__)
+    plt.show()
+    out_path = r"C:\Users\Isac Lazar\Documents\Software\chalmers_al_am\out"
 
-    # Get the directory containing the script
-    script_dir = os.path.dirname(script_path)
-
-    # Get the parent directory
-    parent_dir = os.path.dirname(script_dir)
-
-    plt.savefig(os.path.join(parent_dir, 'out', 'BF_DF_SAED310_SAED594.png'), dpi=600)
+    plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594.png'), dpi=600)
     
-
-    
-#%%
-# Create interactive plotting for the example function. Only works if run as a notebook. (Execute this cell in VSCODE)
-#interactive_plotting(BF_DF_SAED310_SAED594, ['scale_bar_fs'], [(5, 30, 0.5)])
-# %%
-create_plot('BF_DF_SAED310_SAED594')
-# %%
