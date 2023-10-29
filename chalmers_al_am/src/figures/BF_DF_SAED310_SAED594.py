@@ -6,8 +6,10 @@
 
   
 import matplotlib.pyplot as plt
-from figure_tools.plotting_utils import *
-from JEOL3000F_tools.loading import *
+from figuretools.JEOL300F_loading import load_dm3_by_unique_number
+from figuretools.plotting_utils import square_crop, plot_circles_along_line, create_parallelogram, create_scale_bar, plot_image_with_physical_size
+import os
+
 import json
  
 font = {'family' : 'Arial','weight' : 'normal'} 
@@ -253,7 +255,7 @@ def BF_DF_SAED310_SAED594(**kwargs):
 
     fig.tight_layout()
     plt.show()
-    out_path = r"C:\Users\Isac Lazar\Documents\Software\chalmers_al_am\out"
+    out_path = r"C:\Users\Isac Lazar\Documents\Software\chalmers_al_am\chalmers_al_am\out"
 
     plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594.png'), dpi=600)
     
