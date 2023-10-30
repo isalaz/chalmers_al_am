@@ -47,9 +47,7 @@ def main(args):
     args.experiments = available_experiments
             
 
-    # Your data processing code here
-    # Use the raw_dir and process_dir paths to read and process data
-    # Save results in the out_dir directory
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Data processing script")
