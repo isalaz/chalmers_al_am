@@ -254,10 +254,13 @@ def BF_DF_SAED310_SAED594(**kwargs):
    
 
     fig.tight_layout()
-    plt.show()
+    #plt.show()
     out_path = r"C:\Users\Isac Lazar\Documents\Software\chalmers_al_am\chalmers_al_am\out"
 
     plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594.png'), dpi=600)
+    plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594.svg'), dpi=600)
+    plt.rcParams['svg.fonttype'] = 'none' # making sure texts are saved as texts and not paths. This assumes that the machine opening the svg file has the font installed
+    plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594_editable_text.svg'), dpi=600)
     
 
 if __name__ == '__main__':

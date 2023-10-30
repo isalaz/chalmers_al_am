@@ -24,7 +24,7 @@
     "aperture_circle_pos_x_A" : 981, 
     "aperture_circle_pos_y_A" : 520,
     "aperture_circle_label_A" : "SAED",
-    "title_B" : "BF TEM",
+    "title_B" : "DF TEM",
     "im_limits_min_B" : 0, 
     "im_limits_max_B" : 1800,
     "title_C" : "Al$_{45}$Cr$_7$ [310]", 
