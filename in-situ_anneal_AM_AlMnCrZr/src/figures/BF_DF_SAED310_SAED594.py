@@ -3,11 +3,11 @@
 #
 # by Isac Lazar
 #
-
+#%%
   
 import matplotlib.pyplot as plt
 from figuretools.JEOL300F_loading import load_dm3_by_unique_number
-from figuretools.plotting_utils import square_crop, plot_circles_along_line, create_parallelogram, create_scale_bar, plot_image_with_physical_size
+from figuretools.plotting_utils import square_crop, plot_circles_along_line, create_parallelogram, create_scale_bar, plot_image_with_physical_size, interactive_plotting
 import os
 
 import json
@@ -110,6 +110,9 @@ def BF_DF_SAED310_SAED594(**kwargs):
         print('Could not find JSON file with figure parameters')
         print(e)
         return
+    ## handle any parameter values passed as **kwargs
+    p.update((k, kwargs[k]) for k in p.keys() & kwargs.keys())
+
     
     root_path = r"C:\Users\Isac Lazar\OneDrive - Lund University\Dokument\Projekt\Chalmers Al-AM\data\JEOL3000F\2023-10-12\raw"
     im_nr1 = 150
@@ -262,6 +265,9 @@ def BF_DF_SAED310_SAED594(**kwargs):
     plt.rcParams['svg.fonttype'] = 'none' # making sure texts are saved as texts and not paths. This assumes that the machine opening the svg file has the font installed
     plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594_editable_text.svg'), dpi=600)
     
-
+#%%
 if __name__ == '__main__':
     BF_DF_SAED310_SAED594()
+    #interactive_plotting(BF_DF_SAED310_SAED594, ['im_limits_min_A', 'im_limits_max_A'],
+                        # [(-1000, 1000, 10), (0, 3000, 10)])
+# %%
