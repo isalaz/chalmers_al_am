@@ -65,7 +65,20 @@ class Scan:
         for processor_ch in processor_channels:
             processor_ch_files[processor_ch] = natsort.natsorted(glob.glob(os.path.join(processor_ch, "*.nxs" )))
          
-           
+        lengths = [len(lst) for lst in processor_ch_files.values()]
+        assert all(length == lengths[0] for length in lengths), "Not all lists are of the same length."
+        
+        for nxs_files_tuple in zip(*processor_ch_files.values()):
+            # 'items' is a tuple containing the i-th element from each list
+            # Process the first elements of all lists here
+            for nxs_file in nxs_files_tuple:
+                with h5py.File(nxs_file, 'r') as f:
+                    channels = f['entry/instrument/xspress3']
+                    for ch in channels:
+                        hist = channels[ch]['histogram'][()]
+                        
+               
+                    
             
             
       
