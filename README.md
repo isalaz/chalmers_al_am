@@ -1,5 +1,7 @@
-# Chalmers Al AM
-## Characterization research on Al alloys specifically designed for additive manufacturing (AM), developed at Chalmers University of Technology
+# In-situ Anneal AM AlMnCrZr
+
+
+## Characterization research on Al-Mn-Cr-Zr alloys specifically designed for additive manufacturing (AM)
 
 
 https://github.com/isalaz/chalmers_al_am/assets/54549507/20bc54fb-14a8-4aaa-ae27-6faffb2a5b25
