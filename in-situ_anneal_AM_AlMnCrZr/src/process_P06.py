@@ -245,12 +245,17 @@ class Scan:
         """
         with h5py.File(self.meta_data_path, 'r') as f:
             command = f['/scan/program_name'].attrs['scan_command']
-            printer(command, self.verbose)
-            fast_motor_args = command[command.find('scanw'):].split()
-            self.fast_m_start, self.fast_m_end, self.fast_m_steps = float(fast_motor_args[1]), float(fast_motor_args[2]), int(fast_motor_args[3])
-            slow_motor_args = command[command.find('scanv'):].split()
-            self.slow_m_start, self.slow_m_end, self.slow_m_steps = float(slow_motor_args[1]), float(slow_motor_args[2]), int(slow_motor_args[3])
-            self.dwell = float(command.split(' ')[-1])
+            command_list = parse_scan_command(command)
+            
+            
+           
+            self.fast_m_start, self.fast_m_end, self.fast_m_steps = command_list['fast_start'], command_list['fast_stop'], command_list['fast_steps']
+            
+            self.slow_m_start, self.slow_m_end, self.slow_m_steps = command_list['slow_start'], command_list['slow_stop'], command_list['slow_steps']
+          
+            self.dwell = command_list['dwell']
+            self.fast_motor = command_list['fast_motor']
+            self.slow_motor = command_list['slow_motor']
             printer(f'Fast start {self.fast_m_start} um, fast end {self.fast_m_end} um, fast steps {self.fast_m_steps}', self.verbose)
             printer(f'Slow start {self.slow_m_start} um, slow end {self.slow_m_end} um, slow steps {self.slow_m_steps}', self.verbose)
             printer(f'Dwell time {self.dwell} s', self.verbose)
@@ -301,9 +306,7 @@ class Scan:
             
         # interpolate
         
-        print(I_normalised.shape)
-        print(positions_fast.shape)
-        print(positions_slow.shape)
+      
         self.I_interp = griddata((positions_slow,positions_fast), I_normalised, (slowi,fasti),method='nearest')
         self.fast_m_interp = fasti
         self.slow_m_interp = slowi
@@ -325,9 +328,16 @@ class Scan:
             ds.attrs['unit'] = 'a.u.'
             save_f.create_group("positioners")
             ds = save_f.create_dataset('/positioners/fast_m_interp', data=self.fast_m_interp)
-            ds.attrs['unit'] = 'um'
+            if self.fast_motor in ['samy', 'samz']:
+                ds.attrs['unit'] = 'mm'
+            else:
+                ds.attrs['unit'] = 'um'
+            
             ds = save_f.create_dataset('/positioners/slow_m_interp', data=self.slow_m_interp)
-            ds.attrs['unit'] = 'um'
+            if self.fast_motor in ['samy', 'samz']:
+                ds.attrs['unit'] = 'mm'
+            else:   
+                ds.attrs['unit'] = 'um'
            
             ds = save_f.create_dataset('absolute_times_interp', data=self.abs_times_interp)
             ds.attrs['unit'] = 's'
@@ -337,7 +347,45 @@ class Scan:
         printer(f'Saved scannr {self.scan_number}', self.verbose)
 
 
+def parse_scan_command(command: str) -> dict:
+    command_list = command.split(' ')
+    d_scan = {}
+    d_scan['type'] = command_list[0]
+    ### Get motors
+    # 
+    d_scan['fast_motor'] = command_list[1]
+    d_scan['fast_start'] = float(command_list[2])
+    d_scan['fast_stop']  = float(command_list[3])
+    ### 
+    if d_scan['type'] == 'cmesh':
+        d_scan['fast_steps'] = int(command_list[4])
+        d_scan['slow_motor'] = command_list[5]
+        d_scan['slow_start'] = float(command_list[6])
+        d_scan['slow_stop']  = float(command_list[7])
+        #the slow motor is always step scan
+        d_scan['slow_steps'] = int(command_list[8]) + 1
+        d_scan['dwell'] = float(command_list[9])
+       
+    elif d_scan['type'] == 'jmesh': # handles the jmesh
+        d_scan['fast_steps'] = int(command_list[4]) + 1
+        d_scan['slow_motor'] = command_list[6]
+        d_scan['slow_start'] = float(command_list[7])
+        d_scan['slow_stop']  = float(command_list[8])
+        d_scan['slow_steps'] = int(command_list[9])+1
+        d_scan['dwell'] = float(command_list[11])
+    elif d_scan['type'] == 'mesh':
+        d_scan['fast_steps'] = int(command_list[4]) + 1 
+        d_scan['slow_motor'] = command_list[5]
+        d_scan['slow_start'] = float(command_list[6])
+        d_scan['slow_stop']  = float(command_list[7])
+       
+        d_scan['slow_steps'] = int(command_list[8]) + 1
+        d_scan['dwell'] = float(command_list[9])
 
+    else:
+        raise Exception('Scan type ' +d_scan['type'] + ' is neither cmesh or jmesh. Should skip it')
+        
+    return d_scan
 
 def find_unique_sample_names(base_directory: str) -> Set[str]:
     """
@@ -489,6 +537,7 @@ def build_xrf_dataset(root_path: str, sample_names: Set, verbose: bool=False, co
         scan_numbers = glob.glob(os.path.join(sample_raw_dir, 'scan*.nxs'))
         scan_numbers = [int(os.path.basename(fn).split('.')[0].split('_')[1]) for fn in scan_numbers]
         scan_numbers = natsort.natsorted(scan_numbers)
+        failed_scans = []
         for scan_number in scan_numbers:
             print(f'{scan_number} until {scan_numbers[-1]} to go')
             try:
@@ -503,6 +552,9 @@ def build_xrf_dataset(root_path: str, sample_names: Set, verbose: bool=False, co
             except Exception as e:
                 print(f'Error on scan {scan_number}')
                 print(traceback.format_exc())
+                failed_scans.append(scan_number)
+        print(f'Finished {sample_name}')
+        print(f'Failed on scan numbers {failed_scans}')
     
     
     
