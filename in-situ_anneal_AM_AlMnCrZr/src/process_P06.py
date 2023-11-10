@@ -183,6 +183,7 @@ class Scan:
     def load_positions(self):
         """
         Loads the positioner encoder data for both 'fast' and 'slow' axes from an HDF5 file.
+        Also reads the position of the sample from the metadata file.
 
         The method reads 'encoder_fast' and 'encoder_slow' datasets from a file named "positions.h5"
         located in the scan's 'processed' subdirectory, and assigns the data to the attributes 
@@ -202,6 +203,8 @@ class Scan:
             encoder_slow = f['data/encoder_slow/data'][()]
         self.positions_fast = encoder_fast
         self.positions_slow = encoder_slow
+        
+        
     def load_I0(self):
         """
         Loads the I0 (incident beam intensity) data from an HDF5 file.
@@ -225,43 +228,36 @@ class Scan:
         printer(self.I0.shape, self.verbose)
         printer(self.I0.mean(), self.verbose)
         
-    def load_command_arguments(self):
+    def load_metadata(self):
         """
+        Extracts some metadata values
         Extracts the command arguments used to execute the scan at the beamline.
-        Extracts from the metadata file and sets the scan parameters.
-
-        This method reads the 'scan_command' attribute from the 'program_name' dataset within the
-        metadata file. It parses this command string to extract arguments related to the fast and slow
-        motors' start and end positions, the number of steps, as well as the dwell (exposure) time, and assigns
-        these values to the corresponding attributes of the Scan instance.
-
-        Side Effects:
-            - Sets `self.fast_m_start`, `self.fast_m_end`, and `self.fast_m_steps` with the fast motor's scan parameters.
-            - Sets `self.slow_m_start`, `self.slow_m_end`, and `self.slow_m_steps` with the slow motor's scan parameters.
-            - Sets `self.dwell` with the dwell time extracted from the scan command.
-            - Prints the extracted parameters if verbose is True.
-
-        Raises:
-            - FileNotFoundError: If the metadata file is not found at `self.meta_data_path`.
-            - KeyError: If the 'scan_command' attribute is not found in the 'program_name' dataset.
-            - ValueError: If the extracted parameters cannot be converted to their appropriate data types.
+        Extracts the position of the sample stage
         """
         with h5py.File(self.meta_data_path, 'r') as f:
+            # extract scan command and set motor commands
             command = f['/scan/program_name'].attrs['scan_command']
             command_list = parse_scan_command(command)
-            
-            
-           
             self.fast_m_start, self.fast_m_end, self.fast_m_steps = command_list['fast_start'], command_list['fast_stop'], command_list['fast_steps']
-            
             self.slow_m_start, self.slow_m_end, self.slow_m_steps = command_list['slow_start'], command_list['slow_stop'], command_list['slow_steps']
-          
             self.dwell = command_list['dwell']
             self.fast_motor = command_list['fast_motor']
             self.slow_motor = command_list['slow_motor']
             printer(f'Fast start {self.fast_m_start} um, fast end {self.fast_m_end} um, fast steps {self.fast_m_steps}', self.verbose)
             printer(f'Slow start {self.slow_m_start} um, slow end {self.slow_m_end} um, slow steps {self.slow_m_steps}', self.verbose)
             printer(f'Dwell time {self.dwell} s', self.verbose)
+            
+            # extract sample stage parameters 
+            stage_params = {}
+       
+            stage_group = f['/scan/sample/transformations']
+            for param in stage_group:
+                stage_params[param] = {'value':stage_group[param][0], 'units':stage_group[param].attrs['units']}
+            self.stage_params = stage_params
+     
+                
+            
+            
 
     def interpolate(self):
         """
@@ -328,25 +324,30 @@ class Scan:
         with  h5py.File(os.path.join(save_path, self.scan_str + ".h5"), 'w') as save_f:
             
             ds = save_f.create_dataset("I", data=self.I_interp)
-            ds.attrs['unit'] = 'a.u.'
+            ds.attrs['units'] = 'a.u.'
             save_f.create_group("positioners")
             ds = save_f.create_dataset('/positioners/fast_m_interp', data=self.fast_m_interp)
             if self.fast_motor in ['samy', 'samz']:
-                ds.attrs['unit'] = 'mm'
+                ds.attrs['units'] = 'mm'
             else:
-                ds.attrs['unit'] = 'um'
+                ds.attrs['units'] = 'um'
             
             ds = save_f.create_dataset('/positioners/slow_m_interp', data=self.slow_m_interp)
             if self.fast_motor in ['samy', 'samz']:
-                ds.attrs['unit'] = 'mm'
+                ds.attrs['units'] = 'mm'
             else:   
-                ds.attrs['unit'] = 'um'
+                ds.attrs['units'] = 'um'
            
             ds = save_f.create_dataset('absolute_times_interp', data=self.abs_times_interp)
-            ds.attrs['unit'] = 's'
+            ds.attrs['units'] = 's'
             ds = save_f.create_dataset('dwell', data=self.dwell)
-            ds.attrs['unit'] = 's'
+            ds.attrs['units'] = 's'
             save_f.create_dataset('I0_SCALING_FACTOR', data=I0_SCALING_FACTOR)
+            
+            save_f.create_group('stage_params')
+            for param in self.stage_params:
+                ds =save_f.create_dataset(f'stage_params/{param}', data=self.stage_params[param]['value'])
+                ds.attrs['units'] = self.stage_params[param]['units']
         printer(f'Saved scannr {self.scan_number}', self.verbose)
 
 
@@ -518,7 +519,7 @@ def process_scan(root_path, sample_name, scan_number, verbose):
         s.calc_absolute_times()
         s.gather_xrf_intensities()
         s.load_positions()
-        s.load_command_arguments()
+        s.load_metadata()
         s.load_I0()
         s.interpolate()
         s.save_processed_scan()
