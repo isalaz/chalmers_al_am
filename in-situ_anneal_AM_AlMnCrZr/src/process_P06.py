@@ -20,7 +20,10 @@ import datetime
 import h5py
 import natsort
 import traceback
-
+from scipy.interpolate import griddata
+from dask.distributed import Client, as_completed
+from dask import delayed
+import dask
 I0_SCALING_FACTOR = 1e4 #dont change 
 
 def printer(s, verbose=False):
@@ -96,7 +99,7 @@ class Scan:
                     dtime = f_['entry/data/deltatriggertime'][()]
                     dtimes.extend(list(dtime))
             dtimes = np.array(dtimes)
-            print(dtimes.shape)
+            
             cumtimes = np.cumsum(dtimes, dtype=np.float32)
             times_seconds = np.round(cumtimes/1e6).astype(int) #dtimes are in µs
             absolute_times = times_seconds + start_time.timestamp()
@@ -129,7 +132,7 @@ class Scan:
             - Verbose output will log the progress and details of the data gathering process.
         """
         processor_channels = glob.glob(os.path.join(self.root_path,'raw', self.sample_name, self.scan_str, 'xspress3*'))
-        print(processor_channels)
+    
         processor_ch_files = {}
         
         I = []
@@ -279,7 +282,7 @@ class Scan:
         Raises:
             - ValueError: If the interpolation fails due to incorrect grid dimensions or other issues with the data.
         """
-        from scipy.interpolate import griddata
+        
         # target grid to interpolate to
         fasti,slowi = np.meshgrid(np.linspace(self.fast_m_start, self.fast_m_end, self.fast_m_steps),
                                    np.linspace(self.slow_m_start, self.slow_m_end, self.slow_m_steps))
@@ -507,6 +510,24 @@ def build_temperatures_file(root_path: str) -> None:
 
 
             
+# Dask delayed processing function
+@delayed
+def process_scan(root_path, sample_name, scan_number, verbose):
+    try:
+        s = Scan(root_path, sample_name, scan_number, verbose=verbose)
+        s.calc_absolute_times()
+        s.gather_xrf_intensities()
+        s.load_positions()
+        s.load_command_arguments()
+        s.load_I0()
+        s.interpolate()
+        s.save_processed_scan()
+        return scan_number, None  # Return the scan number and None for error
+    except Exception as e:
+        print(f'Error on scan {scan_number}')
+        traceback_str = traceback.format_exc()
+        print(traceback_str)
+        return scan_number, traceback_str  # Return the scan number and the error
     
 
 
@@ -530,33 +551,42 @@ def build_xrf_dataset(root_path: str, sample_names: Set, verbose: bool=False, co
     Raises:
     - FileNotFoundError: If `root_path` does not exist or is not a directory.
     - ValueError: If `config_file` is provided but contains invalid settings."""
+    print('Initialising dask client for parallel computing')
+    client = Client()
+    print(f'Number of cores found: {len(client.ncores())}')
     
+
+
+    futures = []
     for sample_name in sample_names:
         sample_raw_dir = os.path.join(root_path, 'raw', sample_name)
         print(f'Processing {sample_name}')
-        scan_numbers = glob.glob(os.path.join(sample_raw_dir, 'scan*.nxs'))
-        scan_numbers = [int(os.path.basename(fn).split('.')[0].split('_')[1]) for fn in scan_numbers]
+        scan_files = glob.glob(os.path.join(sample_raw_dir, 'scan*.nxs'))
+        scan_numbers = [int(os.path.basename(fn).split('.')[0].split('_')[1]) for fn in scan_files]
         scan_numbers = natsort.natsorted(scan_numbers)
-        failed_scans = []
+
+        # Create Dask delayed tasks for each scan
         for scan_number in scan_numbers:
-            print(f'{scan_number} until {scan_numbers[-1]} to go')
-            try:
-                s = Scan(root_path, sample_name, scan_number, verbose=verbose)
-                s.calc_absolute_times()
-                s.gather_xrf_intensities()
-                s.load_positions()
-                s.load_command_arguments()
-                s.load_I0()
-                s.interpolate()
-                s.save_processed_scan()
-            except Exception as e:
-                print(f'Error on scan {scan_number}')
-                print(traceback.format_exc())
-                failed_scans.append(scan_number)
-        print(f'Finished {sample_name}')
-        print(f'Failed on scan numbers {failed_scans}')
-    
-    
+            future = process_scan(root_path, sample_name, scan_number, verbose)
+            futures.append(future)
+
+    # Compute all tasks in parallel
+    results = client.compute(futures)
+
+    # Gather results
+    failed_scans = []
+    for future, result in as_completed(results, with_results=True):
+        scan_number, error = result
+        if error:
+            failed_scans.append(scan_number)
+
+    # Handle failed scans
+    for sample_name in sample_names:
+        print(f'Finished processing {sample_name}.')
+        if failed_scans:
+            print(f'Failed on scan numbers: {sorted(failed_scans)}')
+    client.shutdown()
+
     
 
 if __name__ == '__main__':
