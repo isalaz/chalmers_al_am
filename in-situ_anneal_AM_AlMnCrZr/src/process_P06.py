@@ -24,6 +24,7 @@ from scipy.interpolate import griddata
 from dask.distributed import Client, as_completed
 from dask import delayed
 import dask
+from pymongo import MongoClient
 I0_SCALING_FACTOR = 1e4 #dont change 
 
 def printer(s, verbose=False):
@@ -52,12 +53,13 @@ class Scan:
         verbose (bool, optional): Enables verbose output if set to True. Defaults to False.
 
     """
-    def __init__(self, root_path, sample_name, scan_number, verbose=False):
+    def __init__(self, root_path, sample_name, scan_number, collection, verbose=False):
         self.root_path = root_path
         self.sample_name = sample_name
         self.scan_number = scan_number
         self.scan_str = 'scan_' + str(scan_number).zfill(5)
         self.meta_data_path = os.path.join(root_path,'raw', sample_name, self.scan_str + '.nxs')
+        self.collection = collection #mongoDB collection
         self.verbose=verbose
         
     def calc_absolute_times(self):
@@ -88,7 +90,8 @@ class Scan:
             # Parse date string into datetime object
             start_time = datetime.datetime.strptime(start_time, format_str)
             end_time = datetime.datetime.strptime(end_time, format_str)
-        
+        self.start_time = start_time.timestamp()
+        self.end_time = end_time.timestamp()
         time_path = os.path.join(self.root_path,'raw', self.sample_name, self.scan_str, "scantime_01" )
         time_files = natsort.natsorted(glob.glob(os.path.join(time_path, "*.nxs" )))
         if len(time_files) > 0:
@@ -243,6 +246,8 @@ class Scan:
             self.dwell = command_list['dwell']
             self.fast_motor = command_list['fast_motor']
             self.slow_motor = command_list['slow_motor']
+            self.fast_m_step_size = np.abs((self.fast_m_end-self.fast_m_start)/self.fast_m_steps)
+            self.slow_m_step_size = np.abs((self.slow_m_end-self.slow_m_start)/self.slow_m_steps)
             printer(f'Fast start {self.fast_m_start} um, fast end {self.fast_m_end} um, fast steps {self.fast_m_steps}', self.verbose)
             printer(f'Slow start {self.slow_m_start} um, slow end {self.slow_m_end} um, slow steps {self.slow_m_steps}', self.verbose)
             printer(f'Dwell time {self.dwell} s', self.verbose)
@@ -313,9 +318,88 @@ class Scan:
         
         self.abs_times_interp = griddata((positions_slow,positions_fast), absolute_times,(slowi,fasti),method='nearest')
     
+    def save_metadata_to_db(self):
+        document = {
+            'scan_number': self.scan_number,
+            'sample_name' : self.sample_name,
+            'beamline': 'P06',
+            'file_path': self.save_path,
+            'datasets': {
+                'I' : {
+                    'internal_path' : 'I',
+                    'units' : 'a.u.'
+                },
+                'unix_time' : {
+                    'internal_path' : 'absolute_times_interp',
+                    'units' : 's'
+                },
+                'positions_fast' : {
+                    'internal_path' : '/positioners/fast_m_interp',
+                    'units' : 'um' if self.fast_motor not in ['samy', 'samz'] else 'mm'
+                },
+                'positions_slow' : {
+                    'internal_path' : '/positioners/slow_m_interp',
+                    'units' : 'um' if self.slow_motor not in ['samy', 'samz'] else 'mm'    
+                }
+           
+            },
+           
+            'I0_scaling_factor': I0_SCALING_FACTOR,
+            'step_size' : {
+                'fast_motor' : {
+                    'value' : self.fast_m_step_size,
+                    'units' : 'um' if self.fast_motor not in ['samy', 'samz'] else 'mm'
+                },
+                'slow_motor' : {
+                    'value' : self.slow_m_step_size,
+                    'units' : 'um' if self.slow_motor not in ['samy', 'samz'] else 'mm'
+                }
+            },
+            'start_position' : {
+                'fast_motor' : {
+                    'value' : self.fast_m_start,
+                    'units' : 'um' if self.fast_motor not in ['samy', 'samz'] else 'mm'
+                },
+                'slow_motor' : {
+                    'value' : self.slow_m_start,
+                    'units' : 'um' if self.slow_motor not in ['samy', 'samz'] else 'mm'
+                    
+                }
+            },
+            'end_position' : {
+                 'fast_motor' : {
+                    'value' : self.fast_m_end,
+                    'units' : 'um' if self.fast_motor not in ['samy', 'samz'] else 'mm'
+                },
+                'slow_motor' : {
+                    'value' : self.slow_m_end,
+                    'units' : 'um' if self.slow_motor not in ['samy', 'samz'] else 'mm'
+                    }
+                
+            },
+            'start_time' : { 
+                'value' : self.start_time,
+                'units' : 's'
+            },
+            'end_time' : {
+                'value' : self.end_time,
+                'units' : 's'
+            },
+            'stage_params': {
+                    param: {
+                        'value': self.stage_params[param]['value'],
+                        'units': self.stage_params[param]['units']
+                    } for param in self.stage_params
+                }
+            
+            
+            
+            }
+        self.collection.insert_one(document) #insert scan metadata into database
         
     def save_processed_scan(self):
         save_path = os.path.join(self.root_path,'process', self.sample_name, self.scan_str )
+        self.save_path = save_path
         if not os.path.exists(save_path):
             # Create a new directory because it does not exist 
             os.makedirs(save_path)
@@ -348,6 +432,7 @@ class Scan:
             for param in self.stage_params:
                 ds =save_f.create_dataset(f'stage_params/{param}', data=self.stage_params[param]['value'])
                 ds.attrs['units'] = self.stage_params[param]['units']
+        self.save_metadata_to_db()
         printer(f'Saved scannr {self.scan_number}', self.verbose)
 
 
@@ -513,9 +598,12 @@ def build_temperatures_file(root_path: str) -> None:
             
 # Dask delayed processing function
 @delayed
-def process_scan(root_path, sample_name, scan_number, verbose):
+def process_scan(root_path, sample_name, scan_number,db_name, collection_name, verbose):
     try:
-        s = Scan(root_path, sample_name, scan_number, verbose=verbose)
+        mongo_client = MongoClient('localhost', 27017)
+        db = mongo_client[db_name]
+        collection = db[collection_name]
+        s = Scan(root_path, sample_name, scan_number, collection, verbose=verbose)
         s.calc_absolute_times()
         s.gather_xrf_intensities()
         s.load_positions()
@@ -523,6 +611,7 @@ def process_scan(root_path, sample_name, scan_number, verbose):
         s.load_I0()
         s.interpolate()
         s.save_processed_scan()
+        mongo_client.close()
         return scan_number, None  # Return the scan number and None for error
     except Exception as e:
         print(f'Error on scan {scan_number}')
@@ -555,8 +644,17 @@ def build_xrf_dataset(root_path: str, sample_names: Set, verbose: bool=False, co
     print('Initialising dask client for parallel computing')
     client = Client()
     print(f'Number of cores found: {len(client.ncores())}')
+   
+    # SPecify the database called 'in_situ_fluo'
+    db_name = 'in_situ_fluo'
+
+    # Specify the collection within the database called 'scans'
+    collection_name = 'scans'
+
     
 
+    
+    
 
     futures = []
     for sample_name in sample_names:
@@ -568,7 +666,7 @@ def build_xrf_dataset(root_path: str, sample_names: Set, verbose: bool=False, co
 
         # Create Dask delayed tasks for each scan
         for scan_number in scan_numbers:
-            future = process_scan(root_path, sample_name, scan_number, verbose)
+            future = process_scan(root_path, sample_name, scan_number, db_name, collection_name, verbose)
             futures.append(future)
 
     # Compute all tasks in parallel
@@ -587,6 +685,7 @@ def build_xrf_dataset(root_path: str, sample_names: Set, verbose: bool=False, co
         if failed_scans:
             print(f'Failed on scan numbers: {sorted(failed_scans)}')
     client.shutdown()
+ 
 
     
 
