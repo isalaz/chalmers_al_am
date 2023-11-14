@@ -323,7 +323,7 @@ class Scan:
             'scan_number': self.scan_number,
             'sample_name' : self.sample_name,
             'beamline': 'P06',
-            'file_path': self.save_path,
+            'file_path': os.path.join(self.save_path, f'{self.scan_str}.h5'),
             'datasets': {
                 'I' : {
                     'internal_path' : 'I',
@@ -599,8 +599,9 @@ def build_temperatures_file(root_path: str) -> None:
 # Dask delayed processing function
 @delayed
 def process_scan(root_path, sample_name, scan_number,db_name, collection_name, verbose):
+    mongo_client = MongoClient('localhost', 27017)
     try:
-        mongo_client = MongoClient('localhost', 27017)
+        
         db = mongo_client[db_name]
         collection = db[collection_name]
         s = Scan(root_path, sample_name, scan_number, collection, verbose=verbose)
@@ -611,13 +612,14 @@ def process_scan(root_path, sample_name, scan_number,db_name, collection_name, v
         s.load_I0()
         s.interpolate()
         s.save_processed_scan()
-        mongo_client.close()
+        
         return scan_number, None  # Return the scan number and None for error
     except Exception as e:
         print(f'Error on scan {scan_number}')
         traceback_str = traceback.format_exc()
         print(traceback_str)
         return scan_number, traceback_str  # Return the scan number and the error
+    mongo_client.close()
     
 
 

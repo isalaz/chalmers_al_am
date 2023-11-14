@@ -114,7 +114,7 @@ def BF_DF_SAED310_SAED594(**kwargs):
     p.update((k, kwargs[k]) for k in p.keys() & kwargs.keys())
 
     
-    root_path = r"C:\Users\Isac Lazar\OneDrive - Lund University\Dokument\Projekt\Chalmers Al-AM\data\JEOL3000F\2023-10-12\raw"
+    root_path = '/data/lazari/data/Al_AM_TEM/2023-10-12/'
     im_nr1 = 150
     im_nr2 = 160
     im_nr3 = 221
@@ -205,7 +205,7 @@ def BF_DF_SAED310_SAED594(**kwargs):
     # index a few diffraction spots along one direction
     plot_circles_along_line(curr_ax, line_start=(p["line_start_dir1_x_C"], p["line_start_dir1_y_C"]), line_end=(p["line_end_dir1_x_C"], p["line_end_dir1_y_C"]), 
                             n_circles=p["n_diff_spot_circles_dir1_C"], labels=p["diff_spots_circle_labels_dir1_C"], radius=p["diff_spots_circle_radius"], 
-                            plot_line=False, fill=False, fontsize=p["annotation_fs"], linewidth=p["annotation_linewidths"], color='white')
+                            plot_line=False, fill=False, fontsize=p["annotation_fs"], linewidth=p["annotation_linewidths"], color='white',ha='left', va='bottom')
     
     # add a red circle indicating the diffraction spot used for DF TEM
     c = Circle((p["diff_spot_for_DF_x_C"], p["diff_spot_for_DF_y_C"]), radius=p["diff_spots_circle_radius"], 
@@ -217,7 +217,7 @@ def BF_DF_SAED310_SAED594(**kwargs):
 
     plot_circles_along_line(curr_ax, line_start=(p["line_start_dir2_x_C"], p["line_start_dir2_y_C"]), line_end=(p["line_end_dir2_x_C"], p["line_end_dir2_y_C"]), n_circles=p["n_diff_spot_circles_dir2_C"], 
                             labels=p["diff_spots_circle_labels_dir2_C"], radius=p["diff_spots_circle_radius"], plot_line=False, fill=False, 
-                            color='white', fontsize=p["annotation_fs"], linewidth=p["annotation_linewidths"])
+                            color='white', fontsize=p["annotation_fs"], linewidth=p["annotation_linewidths"], ha='left', va='bottom')
     
     
 
@@ -246,19 +246,19 @@ def BF_DF_SAED310_SAED594(**kwargs):
     plot_circles_along_line(curr_ax, line_start=(p["line_start_dir1_x_D"], p["line_start_dir1_y_D"]), line_end=(p["line_end_dir1_x_D"], p["line_end_dir1_y_D"]),
                             n_circles=p["n_diff_spot_circles_dir1_D"], 
                             labels=p["diff_spots_circle_labels_dir1_D"], radius=p["diff_spots_circle_radius"], plot_line=False, 
-                            fill=False, color='white', linewidth=p["annotation_linewidths"], fontsize=p["annotation_fs"])
+                            fill=False, color='white', linewidth=p["annotation_linewidths"], fontsize=p["annotation_fs"], ha='left', va='bottom')
 
 
         
  
     plot_circles_along_line(curr_ax, line_start=(p["line_start_dir2_x_D"], p["line_start_dir2_y_D"]), line_end=(p["line_end_dir2_x_D"], p["line_end_dir2_y_D"]), n_circles=p["n_diff_spot_circles_dir2_D"], 
                             labels=p["diff_spots_circle_labels_dir2_D"], radius=p["diff_spots_circle_radius"], plot_line=False, fill=False, 
-                            color='white', fontsize=p["annotation_fs"], linewidth=p["annotation_linewidths"])
+                            color='white', fontsize=p["annotation_fs"], linewidth=p["annotation_linewidths"], ha='left', va='bottom')
    
 
     fig.tight_layout()
     #plt.show()
-    out_path = r"C:\Users\Isac Lazar\Documents\Software\chalmers_al_am\chalmers_al_am\out"
+    out_path = "/data/lazari/code/in-situ_anneal_AM_AlMnCrZr/in-situ_anneal_AM_AlMnCrZr/out"
 
     plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594.png'), dpi=600)
     plt.savefig(os.path.join(out_path, 'BF_DF_SAED310_SAED594.svg'), dpi=600)

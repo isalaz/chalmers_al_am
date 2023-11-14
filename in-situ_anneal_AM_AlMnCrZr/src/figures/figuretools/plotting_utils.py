@@ -62,7 +62,7 @@ def create_scale_bar(ax: mpl.axes._axes.Axes, position: tuple, size: tuple, unit
     ax.text(x=text_x, y=text_y, s=text, fontsize=fontsize, color=color, ha='center')
 
 
-def plot_circles_along_line(ax: mpl.axes._axes.Axes, line_start: tuple, line_end: tuple, n_circles: int, plot_line: bool=False, labels: list = None, radius: float = 0.4, fontsize: float = 10, **kwargs):
+def plot_circles_along_line(ax: mpl.axes._axes.Axes, line_start: tuple, line_end: tuple, n_circles: int, plot_line: bool=False, labels: list = None, radius: float = 0.4, fontsize: float = 10, ha='left', va='center',**kwargs):
     # Extract x and y coordinates of the line start and end points
     x_start, y_start = line_start
     x_end, y_end = line_end
@@ -88,8 +88,8 @@ def plot_circles_along_line(ax: mpl.axes._axes.Axes, line_start: tuple, line_end
         ax.add_patch(circle)
          # Annotate the circle with its label
         if labels is not None and i < len(labels):
-            ax.annotate(labels[i], (x_circle+1.4*radius, y_circle), color='w', fontsize=fontsize,
-                        ha='left', va='center')
+            ax.annotate(labels[i], (x_circle+1.4*radius, y_circle-1.4*radius), color='w', fontsize=fontsize,
+                        ha=ha, va=va)
 
 def plot_image_with_physical_size(ax: mpl.axes._axes.Axes, im: np.array, x_scale: float, y_scale: float, show_axis: bool=True, **kwargs):
     """
