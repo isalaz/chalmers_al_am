@@ -6,19 +6,7 @@
 # This script reorganises the images produced by xrf_line_intensities.py and xrf_pymca_fitting.py
 # Based on a provided look_up table excel sheet, it puts elemental maps in a common folder if they are of 
 # the same sample and scan type e.g otf roi1 prod.
-#It also updates the mongodb scans database with a type if the scan belongs to a scan type
-# The functions in this scripts takes an excel file lookup table as input. The excel file is for 
-# a specific beamline. The different sheets inside it are named after sample_names, however they are not exact matches in their formatting to the database and folder names.
-# This fact does not matter since every scan number is unique. There is a column called Scan Number
-# and a column called Scan Types. 
-# This script finds all the unique Scan Types. By looking at the databse entries, all the scans with the same type that also 
-# are on the same sample should be organised into a stack, with the name of the scan type.
-# Every stack should be contained in a new hdf5 file named {Scan Type}.h5. There should be a group called unregistred,
-# beneath that is a group called line_intensities, and beneath that are datasets consisting of stacks of different elements such as Mn_Ka
-# It also puts the pixel times datasets in this stack form as well. There should be a dataset under unregistered, that is called
-# pixel_times, and is a stack of the corresponding pixel times
-# The script also creates a new collection called stacks in the MongoDB. Here each entry has a scan_type,
-# beamline and sample_name field. It also has a field called scan_numbers which is a list containing the unqie scan_numbers in the stack
+
 import pandas as pd
 import pymongo
 import h5py
