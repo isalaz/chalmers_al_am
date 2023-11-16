@@ -4,13 +4,8 @@
 # by Isac Lazar
 #
 #This script contains functions for processing the raw data from the P06 experiment
-# build_xrf_dataset(root_path: str, verbose: bool=False, config_file: str=None) - > None:
-# find_unique_sample_names(base_directory: str) -> Set[str]:
-# With helper functions:
-# interpolate()
-# temperatures()
-# pixel_absolute_times()
-# pixel_heating_times(threshold: float)
+# TODO add a unique compound index for beamline and scan_number in the MongoDB. This will prevent 
+# duplicate entries when running this script.
 import argparse
 import glob
 import os
