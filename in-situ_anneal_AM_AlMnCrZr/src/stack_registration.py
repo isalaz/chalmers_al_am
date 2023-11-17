@@ -71,35 +71,39 @@ def crop_nans(stack: np.ndarray) -> np.ndarray:
     - cropped_stack : (np.ndarray) : list of arrays where none of them are padded with nan values. 
     All arrays have the same shape.
     """
+    if np.isnan(stack).any():
+        print('Stack contains NaN values, trying to crop')
+        # Initialize min/max indices for rows and columns for each array
+        rows_min, rows_max = [], []
+        cols_min, cols_max = [], []
+        print(f'initial shape: {stack.shape}')
+        # Find the bounding box of non-NaN values for each array
+        for array in stack:
+            # Get indices where the array is not NaN
+            not_nan_indices = np.argwhere(~np.isnan(array))
+            
+            # Find the min/max for rows and columns
+            rows_min.append(not_nan_indices[:, 0].min())
+            rows_max.append(not_nan_indices[:, 0].max())
+            cols_min.append(not_nan_indices[:, 1].min())
+            cols_max.append(not_nan_indices[:, 1].max())
 
-    # Initialize min/max indices for rows and columns for each array
-    rows_min, rows_max = [], []
-    cols_min, cols_max = [], []
-    print(f'initial shape: {stack.shape}')
-    # Find the bounding box of non-NaN values for each array
-    for array in stack:
-        # Get indices where the array is not NaN
-        not_nan_indices = np.argwhere(~np.isnan(array))
+        # Determine the overall min/max indices to crop all arrays
+        overall_min_row = max(rows_min)
+        overall_max_row = min(rows_max)
+        overall_min_col = max(cols_min)
+        overall_max_col = min(cols_max)
+
+        # Crop all arrays to the determined overall bounding box
+        cropped_stack = np.stack([array[overall_min_row:overall_max_row+1, overall_min_col:overall_max_col+1] for array in stack], axis=0)
+        print(f'cropped shape {cropped_stack.shape}')
         
-        # Find the min/max for rows and columns
-        rows_min.append(not_nan_indices[:, 0].min())
-        rows_max.append(not_nan_indices[:, 0].max())
-        cols_min.append(not_nan_indices[:, 1].min())
-        cols_max.append(not_nan_indices[:, 1].max())
-
-    # Determine the overall min/max indices to crop all arrays
-    overall_min_row = max(rows_min)
-    overall_max_row = min(rows_max)
-    overall_min_col = max(cols_min)
-    overall_max_col = min(cols_max)
-
-    # Crop all arrays to the determined overall bounding box
-    cropped_stack = np.stack([array[overall_min_row:overall_max_row+1, overall_min_col:overall_max_col+1] for array in stack], axis=0)
-    print(f'cropped shape {cropped_stack.shape}')
-    return cropped_stack
+        return cropped_stack
+    else:
+        return stack
 
 
-def ORB_align(prev_frame, frame, mask, vmin=None, vmax=None):
+def ORB_align(prev_frame, frame, vmin=None, vmax=None):
     MAX_FEATURES = 1000
     
     # Detect ORB features and compute descriptors.
@@ -107,9 +111,9 @@ def ORB_align(prev_frame, frame, mask, vmin=None, vmax=None):
 
     prev_frame = preprocess(prev_frame, vmin, vmax)
     frame = preprocess(frame, vmin, vmax)
-   
-    keypoints1, descriptors1 = orb.detectAndCompute(prev_frame, mask=mask)
-    keypoints2, descriptors2 = orb.detectAndCompute(frame,  mask=mask)
+    mask = np.ones(shape=frame.shape, dtype=np.uint8)
+    keypoints1, descriptors1 = orb.detectAndCompute(prev_frame, mask)
+    keypoints2, descriptors2 = orb.detectAndCompute(frame, mask)
 
     # Match features.
     matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
@@ -139,7 +143,7 @@ def ORB_align(prev_frame, frame, mask, vmin=None, vmax=None):
 
 
 
-def find_one_transform(prev_frame, frame, mask=None, vmin=None,vmax=None, initial_transform=None ):
+def find_one_transform(prev_frame, frame, vmin=None,vmax=None, initial_transform=None ):
     '''Transforms frame to align with prev_frame using translation, scale and rotation
     First uses the intensity based Enhanced Correlation Coefficient (ECC) from opencv to find transformation matrix
     For large shifts, ECC may fail. If it does not converge an initial guess of the transformation is therefore calculated first.
@@ -163,78 +167,88 @@ def find_one_transform(prev_frame, frame, mask=None, vmin=None,vmax=None, initia
        
     frame = frame.copy().astype(np.float32)
     prev_frame = prev_frame.copy().astype(np.float32)
-    if mask is None:
-        mask = np.ones(shape=frame.shape, dtype=np.uint8)
+    
 
     #Initialise transformation matrix to default identity matrix
     if initial_transform is None:
-        transform = np.eye(2, 3, dtype=np.float32)
-    #Or if provided initialise transformtion matrix to a guess
-    else: 
-        transform = initial_transform.astype(np.float32)
-    
+        initial_transform = np.eye(2, 3, dtype=np.float32)
+  
     try:
-        retval, transform = cv2.findTransformECC(prev_frame, frame, transform, cv2.MOTION_AFFINE, inputMask=mask)
+        
+        retval, transform = cv2.findTransformECC(prev_frame, frame, initial_transform, cv2.MOTION_EUCLIDEAN)
         return transform
 
    
     except Exception as e:
         print(e)
-            
+        
         print("ECC algorithm failed to converge with identity intitialisation matrix. Calculating rough alignment using ORB first")
         try:
-            transform = ORB_align(prev_frame, frame, mask, vmin, vmax)
+            
+            transform = ORB_align(prev_frame, frame, vmin, vmax)
             transform = transform.astype(np.float32)
             print("ORB feature detection success. Will be used as initialisation matrix. Rerunning ECC")
             try:
-                retval, transform = cv2.findTransformECC(prev_frame, frame, transform, cv2.MOTION_AFFINE, inputMask=mask)
+                retval, transform = cv2.findTransformECC(prev_frame, frame, transform, cv2.MOTION_EUCLIDEAN)
+                return transform
                
-                raise Exception
-            except:
+              
+            except Exception as e:
+                print(e)
                 print("ECC algorithm failed with given initialisation matrix. Aborting")
                 raise Exception
                     
-        except: 
-            print("ORB feature detection did not find enough matches. Aborting")
+        except Exception as e:
+            print(e) 
+            
+            fig = plt.figure()
+            axs = fig.subplots(1,2)
+            axs[0].imshow(prev_frame)
+            axs[1].imshow(frame)
+            fig.show()
             raise Exception
-def find_transforms(doc : Dict, ref_element : str):
+def find_transforms(stack):
     """
-    Args:
-    - doc (str) : document from  MongoDB with metadata about stack
-    - ref_element (str) : elemental map used for registration, e.g. Mn_Ka. Transformations found for this elemnt will be applied to all other stacks
+   
     returns:
     - transforms (List[np.ndarray]) : list of transforms"""
-    with h5py.File(doc['file_path'], 'r') as f:
-        stack = f[f'/unregistered/line_intensities/{ref_element}'][()]
-        stack = crop_nans(stack)
-        transforms = []
-        prev_frame = None
-        
-        for i, frame in enumerate(stack):
+   
+    transforms = []
+    prev_frame = None
+   
+    for i, frame in enumerate(stack):
             
-            if prev_frame is None:
-                # If this is the first frame, set it as the previous frame 
-                prev_frame = frame
-                #append a transform that does nothing when applied
-                transforms.append(np.eye(2, 3, dtype=np.float32))
+        if prev_frame is None:
+            # If this is the first frame, set it as the previous frame 
+            prev_frame = frame
+            #append a transform that does nothing when applied
+            transforms.append(np.eye(2, 3, dtype=np.float32))
         
-                continue
-            try:
-                t = find_one_transform(prev_frame, frame)
-                transforms.append(t)
-            except:
-                print("failed matching scan: " + str(doc['scan_numbers'][i]) + " with scan: " +  str(doc['scan_numbers'][i-1]))
+            continue
+        try:
+                
+            t = find_one_transform(prev_frame, frame)
+            transforms.append(t)
+        except:
+            print(f"Failed matching frames with position {i-1} and {i} in the stack ")
+            raise Exception
+        prev_frame = frame
+    
     return transforms
                 
 def apply_transforms(stack : np.ndarray, transforms : List[np.ndarray]) -> np.ndarray:
     aligned_stack = []
+    stack = crop_nans(stack)
     # Transforms in their current state describe the transformation between two subsequent images
     # Convert all transforms so that they describe the transform with respect to the very first frame in the stack.
-    for i in range(np.shape(transforms)[0]):
+    
+    for i in range(len(transforms)):
+       
         
     
         #flip the order of the transforms so that the matrix multiplication is correct
         # last transform will come first
+        
         ts = np.flip(transforms[0:i+1],axis=0)
         #fix so that it has the correct shape
         final_transform = np.vstack((ts[0], [0, 0, 1]))
@@ -269,17 +283,35 @@ def register_stacks(beamline : str = None, sample_name : str = None, scan_type :
     try:
         for doc in stack_docs:
             print('Registering ' + doc['beamline'] + " " + doc['sample_name'] + " " + doc['scan_type'])
-            transforms = find_transforms(doc, ref_element)
-            with h5py.File(doc['file_path'], 'r+') as f:
-                unregistered_line_intensities = f['/unregistered/line_intensities']
-                registered_line_intensities = f.require_group('/registered/line_intensities')
-                
-                for element in unregistered_line_intensities:
-                    element_stack = unregistered_line_intensities[element][()]
-                    registered_element_stack = apply_transforms(element_stack, transforms)
-                    ds = registered_line_intensities.create_dataset(name=element, data=registered_element_stack)
-                    ds.attrs['units'] = 'a.u.'
-                    ds.attrs['ref_element'] = ref_element
+            with h5py.File(doc['file_path'], 'r') as f:
+                stack = f[f'/unregistered/line_intensities/{ref_element}'][()]
+                stack = crop_nans(stack)
+            
+            
+            
+            try:
+                print('Calculating transforms')
+                transforms = find_transforms(stack)
+                print('Transforms calculated')
+            
+                with h5py.File(doc['file_path'], 'r+') as f:
+                    unregistered_line_intensities = f['/unregistered/line_intensities']
+                    registered_line_intensities_g = f.require_group('/registered/line_intensities')
+                    print('Applying tranforms to all elements')
+                    for element in unregistered_line_intensities:
+                        element_stack = unregistered_line_intensities[element][()]
+                        registered_element_stack = apply_transforms(element_stack, transforms)
+                        if element in registered_line_intensities_g:
+                            del registered_line_intensities_g[element]
+                            ds = registered_line_intensities_g.create_dataset(name=element, data=registered_element_stack)
+                            
+                            
+                        else:
+                            ds = registered_line_intensities_g.create_dataset(name=element, data=registered_element_stack)
+                        ds.attrs['units'] = 'a.u.'
+                        ds.attrs['ref_element'] = ref_element
+            except:
+                print('Calculating transforms failed')
                     
                     
     finally:
@@ -287,14 +319,40 @@ def register_stacks(beamline : str = None, sample_name : str = None, scan_type :
         
         
 #%%
+def load_tif_stack(folder_name):
+    import glob
+    import os
+    import natsort
+    files = glob.glob(os.path.join(folder_name, '*.tif'))
+    files = natsort.natsorted(files)
+    stack = []
+    if len(files) == 0:
+        print('No files')
+        raise Exception
     
+    for f in files:
+        im = np.array(Image.open(f))
+        
+        stack.append(im)
+    return stack
+
+def test_stack_registration():
+    test_folder = "/data/lazari/code/in-situ_anneal_AM_AlMnCrZr/in-situ_anneal_AM_AlMnCrZr/test_data/P06/process/fluo_stacks/fluo_stacks/jmesh ROI2/Mn_Ka"     
+    stack = load_tif_stack(test_folder)
+    stack = np.stack(stack, axis=0)
+    stack = crop_nans(stack)
+    transforms = find_transforms(stack)
+    registered = apply_transforms(stack, transforms)
+
+
+
     
 if __name__ == '__main__':
     beamline = 'P06'
     sample_name = '08_alloy_C_lamella_A_roco'
-    scan_type = 'cmesh prod'
-    register_stacks(beamline, sample_name, scan_type)
-
+    
+    register_stacks(beamline)
+    #test_stack_registration()
 
 
 
