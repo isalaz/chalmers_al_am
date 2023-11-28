@@ -6,11 +6,16 @@
 
 https://github.com/isalaz/chalmers_al_am/assets/54549507/20bc54fb-14a8-4aaa-ae27-6faffb2a5b25
 
+This repository contains the code used to process data and produce figures that were used in the manuscript [In situ Imaging of Precipitate Formation in Additively Manufactured Al-Alloys by Scanning X-ray Fluorescence](arxiv.org/abs/2311.14529). 
 
-For papers concerning the development of the alloy see :
-Bharat Mehta
+It includes loading, processing and modeling of data from various experiments. 
 
-This repository contains the code used to produce figures, images and tables that were used in manuscripts. It includes loading, processing and modeling of data from various experiments. 
+For papers concerning the development of the alloy see papers by Bharat Mehta:
+[Al–Mn–Cr–Zr-based alloys tailored for powder bed fusion-laser beam process: Alloy design, printability, resulting microstructure and alloy properties](doi.org/10.1557/s43578-022-00533-1)
+
+[Effect of precipitation kinetics on microstructure and properties of novel Al-Mn-Cr-Zr based alloys developed for powder bed fusion – laser beam process](doi.org/10.1016/j.jallcom.2022.165870)
+
+
 ### Scanning X-ray Fluorescence measurements (XRF). 
 These experiments were performed at two separate synchrotron facilities
 - ID16B beamline at the European Synchrotron Research Facility (ESRF) in Grenoble
@@ -42,7 +47,5 @@ cd /src
 ```
 python -m package.module.script
 ```
-Example 
-```
-python -m figure_scripts.BF_DF_SAED310_SAED594 
-```
+
+
