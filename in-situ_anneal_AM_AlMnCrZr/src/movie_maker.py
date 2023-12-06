@@ -52,8 +52,8 @@ def movie_maker(beamline : str = None, sample_name : str = None, scan_type : str
                 for idx, element in enumerate(element_names):
                     images_layered[:,:,:, idx] = elements_stacks[element]
             
-            script_dir = Path(__file__).parent
-            folder_save_path = os.path.join(script_dir, 'out', 'movies', doc['beamline'], doc['sample_name'])
+            dir = Path(__file__).parent.parent
+            folder_save_path = os.path.join(dir, 'out', 'movies', doc['beamline'], doc['sample_name'])
             if not os.path.exists(folder_save_path):
                 os.makedirs(folder_save_path)
             fn = doc['scan_type'] + '_rgb_' + '_'.join(element_names) + '.mp4'
